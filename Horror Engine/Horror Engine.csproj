@@ -107,6 +107,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DrawHouses.cs" />
     <Compile Include="DrawMouseCursor.cs" />
     <Compile Include="GameMenuButton.cs" />
     <Compile Include="InputListener.cs" />

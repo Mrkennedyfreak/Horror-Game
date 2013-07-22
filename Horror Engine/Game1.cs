@@ -24,6 +24,8 @@ namespace Horror_Engine
 
         Menu m;
 
+        BasicEffect effect;
+
         DrawMouseCursor cursor;
 
         public Boolean gameInit = true;
@@ -32,17 +34,17 @@ namespace Horror_Engine
         InputListener updateInput = new InputListener();
 
         Model house;
-        Model box;
 
         // Set the position of the camera in world space, for our view matrix.
-        public Vector3 cameraPosition = new Vector3(5.0f, 5.0f, 5.0f);
+        public Vector3 cameraPosition = new Vector3(0.0f, 0.0f, 0.0f);
 
-        public float leftrightRot = MathHelper.PiOver2;
-        public float updownRot = -MathHelper.Pi / 10.0f;
-        public const float rotationSpeed = 0.3f;
-        public const float moveSpeed = 30.0f;
+        public float pitch;
+        public float yaw;
+        public const float rotationSpeed = 0.025f;
+        public const float moveSpeed = 1f; //30.0f;
         public float aspectRatio;
-        
+
+        MouseState originalMouseState;
 
         public Game1()
         {
@@ -102,7 +104,7 @@ namespace Horror_Engine
             if (gameInit == false)
             {
                 //house = Content.Load<Model>("Models\\house");
-                box = Content.Load<Model>("Models\\Block");
+                house = Content.Load<Model>("Models\\house");
             }
             
             // TODO: use this.Content to load your game content here
@@ -129,8 +131,6 @@ namespace Horror_Engine
                 this.Exit();
 
             float timeDifference = (float)gameTime.ElapsedGameTime.TotalMilliseconds / 1000.0f;
-
-            
 
             if (gameInit == true)
             {
@@ -174,6 +174,10 @@ namespace Horror_Engine
 
                 ProcessInput(timeDifference);
 
+                UpdateViewMatrix();
+
+                effect.View = viewMatrix;
+
                 Mouse.SetPosition(graphics.GraphicsDevice.Viewport.Width / 2, graphics.GraphicsDevice.Viewport.Height / 2);
             }
 
@@ -184,8 +188,8 @@ namespace Horror_Engine
         public static int rotationVar = 1;
 
         // Set the position of the model in world space, and set the rotation.
-        //public Vector3 modelPosition = new Vector3(0 , -100, -1000);
-        public Vector3 modelPosition = Vector3.Zero;
+        public Vector3 modelPosition = new Vector3(0, 0, -800);
+        //public Vector3 modelPosition = Vector3.Zero;
         public float modelRotation = 0.0f;
 
         // Set the "Look At" point for the camera. Edited in 'UpdateCamera()' function.
@@ -232,36 +236,38 @@ namespace Horror_Engine
             spriteBatch.Begin();
 
             if (gameInit == true)
-
             {
                 m.Draw(spriteBatch);
             }
 
             if (gameInit == false)
             {
-                // Copy any parent transforms.
-                Matrix[] transforms = new Matrix[box.Bones.Count];
-                box.CopyAbsoluteBoneTransformsTo(transforms);
-
-                // Draw the model. A model can have multiple meshes, so loop.
-                foreach (ModelMesh mesh in box.Meshes)
+                for (int i = 0; i < 20; i++)
                 {
-                    // This is where the mesh orientation is set, as well as our camera and projection.
-                    foreach (BasicEffect effect in mesh.Effects)
-                    {
-                        effect.EnableDefaultLighting();
-                        effect.World = transforms[mesh.ParentBone.Index] * Matrix.CreateRotationY(modelRotation)
-                            * Matrix.CreateTranslation(modelPosition);
-                        effect.View = Matrix.CreateLookAt(cameraPosition, Vector3.Zero, Vector3.Up);
-                        effect.Projection =  Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, aspectRatio, 1f, 500f);
-                        effect.LightingEnabled = true;
-                        effect.Alpha = 1.0f;
+                    // Copy any parent transforms.
+                    Matrix[] transforms = new Matrix[house.Bones.Count];
+                    house.CopyAbsoluteBoneTransformsTo(transforms);
 
+                    // Draw the model. A model can have multiple meshes, so loop.
+                    foreach (ModelMesh mesh in house.Meshes)
+                    {
+                        // This is where the mesh orientation is set, as well as our camera and projection.
+                        foreach (BasicEffect effect in mesh.Effects)
+                        {
+                            this.effect = effect;
+
+                            effect.EnableDefaultLighting();
+                            effect.World = transforms[mesh.ParentBone.Index] * Matrix.CreateRotationY(modelRotation)
+                                * Matrix.CreateTranslation(new Vector3(0, 0, -1200 - (i * 1000)));
+                            effect.Projection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, aspectRatio, 1f, 5000f);
+                            effect.LightingEnabled = true;
+                            effect.Alpha = 1.0f;
+                        }
+                        // Draw the mesh, using the effects set above.
+                        mesh.Draw();
                     }
-                    // Draw the mesh, using the effects set above.
-                    mesh.Draw();
                 }
-            }
+}
 
             if (drawCursor == true)
             {
@@ -297,32 +303,39 @@ namespace Horror_Engine
             //{
             //    float xDifference = currentMouseState.X - originalMouseState.X;
             //    float yDifference = currentMouseState.Y - originalMouseState.Y;
-            //    leftrightRot -= rotationSpeed * xDifference * amount;
-            //    updownRot -= rotationSpeed * yDifference * amount;
-            //    Mouse.SetPosition(device.Viewport.Width / 2, device.Viewport.Height / 2);
+            //    pitch += xDifference * rotationSpeed * amount;
+            //    yaw -= yDifference * rotationSpeed * amount;
+            //    //leftrightRot = yDifference * amount;
+            //    //updownRot = xDifference * amount;
+            //    //leftrightRot -= rotationSpeed * xDifference * amount;
+            //    //updownRot -= rotationSpeed * yDifference * amount;
+            //    Mouse.SetPosition(GraphicsDevice.Viewport.Width / 2, GraphicsDevice.Viewport.Height / 2);
             //    UpdateViewMatrix();
             //}
 
             Vector3 moveVector = new Vector3(0, 0, 0);
             KeyboardState keyState = Keyboard.GetState();
             if (keyState.IsKeyDown(Keys.Up) || keyState.IsKeyDown(Keys.W))
-                moveVector += new Vector3(0, 0, -1);
+                pitch += rotationSpeed;
             if (keyState.IsKeyDown(Keys.Down) || keyState.IsKeyDown(Keys.S))
-                moveVector += new Vector3(0, 0, 1);
+                pitch -= rotationSpeed;
             if (keyState.IsKeyDown(Keys.Right) || keyState.IsKeyDown(Keys.D))
-                moveVector += new Vector3(1, 0, 0);
+                yaw += rotationSpeed;
             if (keyState.IsKeyDown(Keys.Left) || keyState.IsKeyDown(Keys.A))
-                moveVector += new Vector3(-1, 0, 0);
+                yaw -= rotationSpeed;
             if (keyState.IsKeyDown(Keys.Q))
-                moveVector += new Vector3(0, 1, 0);
+                cameraPosition += new Vector3(0, 1, 0);
             if (keyState.IsKeyDown(Keys.Z))
-                moveVector += new Vector3(0, -1, 0);
+                cameraPosition += new Vector3(0, -1, 0);
+            if (keyState.IsKeyDown(Keys.Escape))
+                Exit();
+
             AddToCameraPosition(moveVector * amount);
         }
 
         private void AddToCameraPosition(Vector3 vectorToAdd)
         {
-            Matrix cameraRotation = Matrix.CreateRotationX(updownRot) * Matrix.CreateRotationY(leftrightRot);
+            Matrix cameraRotation = Matrix.CreateRotationX(pitch) * Matrix.CreateRotationY(yaw);
             Vector3 rotatedVector = Vector3.Transform(vectorToAdd, cameraRotation);
             cameraPosition += moveSpeed * rotatedVector;
             UpdateViewMatrix();
@@ -330,17 +343,34 @@ namespace Horror_Engine
 
         private void UpdateViewMatrix()
         {
-            Matrix cameraRotation = Matrix.CreateRotationX(updownRot) * Matrix.CreateRotationY(leftrightRot);
+            // Calculate the camera's current position.
+            Vector3 cameraPosition = Vector3.Zero;
 
-            Vector3 cameraOriginalTarget = new Vector3(0, 0, -1);
-            Vector3 cameraOriginalUpVector = new Vector3(0, 1, 0);
+            Matrix rotationMatrixY = Matrix.CreateRotationY(yaw);
+            Matrix rotationMatrixX = Matrix.CreateRotationX(pitch);
 
-            Vector3 cameraRotatedTarget = Vector3.Transform(cameraOriginalTarget, cameraRotation);
-            Vector3 cameraFinalTarget = cameraPosition + cameraRotatedTarget;
+            Matrix cameraRotation = rotationMatrixX * rotationMatrixY;
 
-            Vector3 cameraRotatedUpVector = Vector3.Transform(cameraOriginalUpVector, cameraRotation);
+            // Create a vector pointing the direction the camera is facing.
+            Vector3 transformedReference = Vector3.Transform(cameraReference, cameraRotation);
 
-            viewMatrix = Matrix.CreateLookAt(cameraPosition, cameraFinalTarget, cameraRotatedUpVector);
+            // Calculate the position the camera is looking at.
+            Vector3 cameraLookat = cameraPosition + transformedReference;
+
+            // Set up the view matrix and projection matrix.
+            viewMatrix = Matrix.CreateLookAt(cameraPosition, cameraLookat, new Vector3(0.0f, 1.0f, 0.0f));
+
+            //Matrix cameraRotation = Matrix.CreateRotationX(updownRot) * Matrix.CreateRotationY(leftrightRot);
+
+            //Vector3 cameraOriginalTarget = modelPosition;
+            //Vector3 cameraOriginalUpVector = new Vector3(0, 1, 0);
+
+            //Vector3 cameraRotatedTarget = Vector3.Transform(cameraOriginalTarget, cameraRotation);
+            //Vector3 cameraFinalTarget = cameraRotatedTarget;
+
+            //Vector3 cameraRotatedUpVector = Vector3.Transform(cameraOriginalUpVector, cameraRotation);
+
+            //viewMatrix = Matrix.CreateLookAt(cameraPosition, modelPosition, cameraRotatedUpVector);
         }
     }
 }
